@@ -1,0 +1,106 @@
+package es.studium.LoginLibros;
+
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.*;
+
+public class BajaCreacion extends Frame implements WindowListener, ActionListener 
+{
+	private static final long serialVersionUID = 1L;
+
+	Label lblTexto = new Label("Seleccione la vinculación de autoría a eliminar:");
+	Choice choRegistros = new Choice();
+	Button btnBorrar = new Button("Desvincular Autoría");
+	Button btnVolver = new Button("Volver");
+
+	Dialog dlgConfirmacion;
+	Label lblSeguro = new Label("¿Desea eliminar esta relación autor-libro?", Label.CENTER);
+	Button btnSi = new Button("Sí");
+	Button btnNo = new Button("No");
+
+	public BajaCreacion() 
+	{
+		setLayout(null);
+		setTitle("Baja Creación");
+
+		lblTexto.setBounds(40, 50, 320, 25);
+		choRegistros.setBounds(40, 85, 340, 25);
+		btnBorrar.setBounds(60, 140, 145, 30);
+		btnVolver.setBounds(220, 140, 115, 30);
+
+		actualizarDesplegable();
+
+		add(lblTexto); add(choRegistros); add(btnBorrar); add(btnVolver);
+
+		btnBorrar.addActionListener(this);
+		btnVolver.addActionListener(this);
+		addWindowListener(this);
+
+		setSize(420, 200);
+		setResizable(false);
+		setLocationRelativeTo(null);
+		setVisible(true);
+	}
+
+	private void actualizarDesplegable() 
+	{
+		choRegistros.removeAll();
+		// Tarea 2: INNER JOIN para ver qué autor y qué libro estamos borrando de manera textual
+		String sql = "SELECT c.idCreacion, e.nombreEscritor, l.nombreLibro " +
+		             "FROM creacion c " +
+		             "INNER JOIN escritores e ON c.idEscritorFK = e.idEscritor " +
+		             "INNER JOIN libros l ON c.idLibroFK = l.idLibro";
+		try (Connection con = ConexionBD.conectar();
+			 Statement st = con.createStatement();
+			 ResultSet rs = st.executeQuery(sql)) 
+		{
+			while (rs.next()) {
+				choRegistros.add(rs.getInt("idCreacion") + " - Autor: " + rs.getString("nombreEscritor") + " -> Libro: " + rs.getString("nombreLibro"));
+			}
+		} catch (Exception e) { System.out.println(e.getMessage()); }
+	}
+
+	public void actionPerformed(ActionEvent e) 
+	{
+		Object src = e.getSource();
+		if (src.equals(btnVolver)) this.dispose();
+		else if (src.equals(btnBorrar)) { if (choRegistros.getSelectedItem() != null) abrirDialogo(); }
+		else if (src.equals(btnNo)) dlgConfirmacion.dispose();
+		else if (src.equals(btnSi)) confirmarBorrado();
+	}
+
+	private void abrirDialogo() 
+	{
+		dlgConfirmacion = new Dialog(this, "Confirmación Obligatoria", true);
+		dlgConfirmacion.setLayout(null);
+		lblSeguro.setBounds(15, 40, 270, 25);
+		btnSi.setBounds(65, 85, 75, 25); btnNo.setBounds(160, 85, 75, 25);
+		dlgConfirmacion.add(lblSeguro); dlgConfirmacion.add(btnSi); dlgConfirmacion.add(btnNo);
+		btnSi.addActionListener(this); btnNo.addActionListener(this);
+		dlgConfirmacion.setSize(300, 140);
+		dlgConfirmacion.setLocationRelativeTo(this);
+		dlgConfirmacion.setVisible(true);
+	}
+
+	private void confirmarBorrado() 
+	{
+		int id = Integer.parseInt(choRegistros.getSelectedItem().split(" - ")[0]);
+		try (Connection con = ConexionBD.conectar();
+			 PreparedStatement pst = con.prepareStatement("DELETE FROM creacion WHERE idCreacion = ?")) 
+		{
+			pst.setInt(1, id);
+			pst.executeUpdate();
+			LogUtil.registrarAccion(Login.usuarioActual, "Baja de relacion Creación ID: " + id);
+			dlgConfirmacion.dispose();
+			actualizarDesplegable();
+		} catch (Exception ex) { System.out.println(ex.getMessage()); }
+	}
+
+	public void windowClosing(WindowEvent e) { this.dispose(); }
+	public void windowActivated(WindowEvent e) {}
+	public void windowClosed(WindowEvent e) {}
+	public void windowDeactivated(WindowEvent e) {}
+	public void windowDeiconified(WindowEvent e) {}
+	public void windowIconified(WindowEvent e) {}
+	public void windowOpened(WindowEvent e) {}
+}
