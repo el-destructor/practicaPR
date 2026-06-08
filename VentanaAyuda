@@ -1,0 +1,101 @@
+package es.studium.LoginLibros;
+
+import java.awt.*;
+import java.awt.event.*;
+import java.io.File;
+import java.io.FileWriter;
+
+public class VentanaAyuda extends Frame implements WindowListener 
+{
+	private static final long serialVersionUID = 1L;
+
+	public VentanaAyuda(String rol) 
+	{
+		String nombreArchivo = "manual_ayuda.html";
+		
+		// 1. Ejecutamos el método que escribe el HTML básico
+		generarHTML(nombreArchivo, rol);
+		
+		// 2. Ejecutamos el método que lanza el navegador de internet
+		abrirEnNavegador(nombreArchivo);
+		
+		// 3. Eliminamos la ventana de Java ya que la ayuda se ve en la web externa
+		this.dispose();
+	}
+
+	private void generarHTML(String ruta, String rol) 
+	{
+		boolean esAdmin = rol.equalsIgnoreCase("Administrador");
+		
+		try (FileWriter fw = new FileWriter(new File(ruta))) 
+		{
+			// Apertura del documento web sin estilos complejos
+			fw.write("<html>\n<head>\n<title>Manual de Ayuda</title>\n</head>\n");
+			fw.write("<body>\n");
+			
+			fw.write("<h1>MANUAL DE AYUDA DEL SISTEMA</h1>\n");
+			fw.write("<p><strong>Rol de usuario detectado:</strong> " + rol.toUpperCase() + "</p>\n");
+			fw.write("<hr>\n");
+
+			// TAREA 3: Índice interactivo básico (Enlaces anclados)
+			fw.write("<h3>INDICE DEL MANUAL</h3>\n");
+			fw.write("<a href='#sec1'>1. Vista General del Sistema</a><br>\n");
+			fw.write("<a href='#sec2'>2. Control de Acceso y Permisos</a><br>\n");
+			fw.write("<a href='#sec3'>3. Gestion del Catalogo de Libros</a><br>\n");
+			fw.write("<a href='#sec4'>4. Registro de Movimientos (Log)</a><br>\n");
+			fw.write("<hr>\n");
+
+			// SECCIÓN 1: Dinámica por rol
+			fw.write("<h2 id='sec1'>1. Vista General del Sistema</h2>\n");
+			if (esAdmin) {
+				fw.write("<p>Usted ha accedido con privilegios de Administrador. Puede gestionar de forma global añadiendo, modificando o eliminando registros.</p>\n");
+			} else {
+				fw.write("<p>Usted ha accedido con el Rol Basico. El sistema se encuentra en modo lectura, permitiéndole únicamente realizar consultas.</p>\n");
+			}
+
+			// SECCIÓN 2
+			fw.write("<h2 id='sec2'>2. Control de Acceso y Permisos</h2>\n");
+			fw.write("<p>El programa valida sus credenciales. En función de su tipo de usuario las opciones se activarán o desactivarán en la interfaz.</p>\n");
+
+			// SECCIÓN 3: Dinámica por rol
+			fw.write("<h2 id='sec3'>3. Gestion del Catalogo de Libros</h2>\n");
+			if (esAdmin) {
+				fw.write("<p>Permite registrar un nuevo libro, modificar campos o eliminar mediante sentencias SQL directas.</p>\n");
+			} else {
+				fw.write("<p>Permite examinar la lista de libros. La aplicación realiza de forma automática una sentencia SQL con JOIN.</p>\n");
+			}
+
+			// SECCIÓN 4
+			fw.write("<h2 id='sec4'>4. Registro de Movimientos (Log)</h2>\n");
+			fw.write("<p>Cualquier acción que realice se guardará automáticamente junto con la fecha y la hora en el archivo de texto 'movimientos.log'.</p>\n");
+
+			fw.write("</body>\n</html>");
+		} 
+		catch (Exception e) {
+			System.out.println("Error al escribir el archivo de ayuda: " + e.getMessage());
+		}
+	}
+
+	private void abrirEnNavegador(String ruta) 
+	{
+		if (Desktop.isDesktopSupported()) 
+		{
+			try 
+			{
+				File archivoHtml = new File(ruta);
+				Desktop.getDesktop().open(archivoHtml); // Abre la web con el navegador predeterminado del PC
+			} 
+			catch (Exception e) {
+				System.out.println("No se pudo abrir el navegador: " + e.getMessage());
+			}
+		}
+	}
+
+	public void windowClosing(WindowEvent e) { this.dispose(); }
+	public void windowActivated(WindowEvent e) {}
+	public void windowClosed(WindowEvent e) {}
+	public void windowDeactivated(WindowEvent e) {}
+	public void windowDeiconified(WindowEvent e) {}
+	public void windowIconified(WindowEvent e) {}
+	public void windowOpened(WindowEvent e) {}
+}
