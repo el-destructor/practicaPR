@@ -1,0 +1,99 @@
+package es.studium.LoginLibros;
+
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.*;
+
+public class ModificarEditorial extends Frame implements WindowListener, ActionListener 
+{
+	private static final long serialVersionUID = 1L;
+
+	Choice choBuscar = new Choice();
+	Button btnCargar = new Button("Cargar");
+	TextField txtNom = new TextField();
+	TextField txtCorr = new TextField();
+	TextField txtTlf = new TextField();
+	Button btnModificar = new Button("Guardar Cambios");
+
+	public ModificarEditorial() 
+	{
+		setLayout(null);
+		setTitle("Modificar Editorial");
+
+		choBuscar.setBounds(30, 45, 200, 25);  
+		btnCargar.setBounds(240, 45, 80, 25);
+		txtNom.setBounds(140, 90, 180, 25);
+		txtCorr.setBounds(140, 130, 180, 25);
+		txtTlf.setBounds(140, 170, 180, 25);
+		btnModificar.setBounds(110, 215, 140, 30);
+
+		cargarComboEditoriales();
+
+		add(choBuscar); add(btnCargar); add(txtNom); add(txtCorr); add(txtTlf); add(btnModificar);
+
+		btnCargar.addActionListener(this);
+		btnModificar.addActionListener(this);
+		addWindowListener(this);
+
+		setSize(360, 270);
+		setResizable(false);
+		setLocationRelativeTo(null);
+		setVisible(true);
+	}
+
+	private void cargarComboEditoriales() 
+	{
+		try (Connection con = ConexionBD.conectar(); 
+			 Statement st = con.createStatement(); 
+			 ResultSet rs = st.executeQuery("SELECT idEditorial, nombreEditorial FROM editoriales")) {
+			while (rs.next()) choBuscar.add(rs.getInt("idEditorial") + " - " + rs.getString("nombreEditorial"));
+		} catch (Exception e) {}
+	}
+
+	public void actionPerformed(ActionEvent e) 
+	{
+		Object src = e.getSource();
+		if (src.equals(btnCargar)) 
+		{
+			if (choBuscar.getSelectedItem() == null) return;
+			int idSeleccionado = Integer.parseInt(choBuscar.getSelectedItem().split(" - ")[0]);
+			
+			try (Connection con = ConexionBD.conectar(); 
+				 PreparedStatement pst = con.prepareStatement("SELECT nombreEditorial, correoEditorial, telefonoEditorial FROM editoriales WHERE idEditorial = ?")) {
+				pst.setInt(1, idSeleccionado);
+				ResultSet rs = pst.executeQuery();
+				if (rs.next()) {
+					txtNom.setText(rs.getString("nombreEditorial"));
+					txtCorr.setText(rs.getString("correoEditorial"));
+					txtTlf.setText(rs.getString("telefonoEditorial"));
+				}
+			} catch(Exception ex) {}
+		} 
+		else if (src.equals(btnModificar)) 
+		{
+			if (choBuscar.getSelectedItem() == null) return;
+			int idEditorial = Integer.parseInt(choBuscar.getSelectedItem().split(" - ")[0]);
+			
+			String query = "UPDATE editoriales SET nombreEditorial=?, correoEditorial=?, telefonoEditorial=? WHERE idEditorial=?";
+			try (Connection con = ConexionBD.conectar(); 
+				 PreparedStatement pst = con.prepareStatement(query)) {
+				pst.setString(1, txtNom.getText().trim());
+				pst.setString(2, txtCorr.getText().trim());
+				pst.setString(3, txtTlf.getText().trim());
+				pst.setInt(4, idEditorial);
+				pst.executeUpdate();
+				
+				LogUtil.registrarAccion(Login.usuarioActual, "Modifico Editorial ID: " + idEditorial);
+				this.dispose();
+			} catch(Exception ex) {}
+		}
+	}
+
+	public void windowClosing(WindowEvent e) { this.dispose(); }
+	public void windowActivated(WindowEvent e) {}
+	public void windowClosed(WindowEvent e) {}
+	public void windowDeactivated(WindowEvent e) {}
+	public void windowDeiconified(WindowEvent e) {}
+	public void windowIconified(WindowEvent e) {}
+	public void windowOpened(WindowEvent e) {}
+}
