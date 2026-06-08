@@ -1,0 +1,182 @@
+package es.studium.LoginLibros;
+
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import java.sql.*;
+
+public class ConsultaCreacion extends Frame implements WindowListener, ActionListener 
+{
+	private static final long serialVersionUID = 1L;
+
+	Label lblTitulo = new Label("Listado de Relaciones de Autoría (Creaciones)", Label.CENTER);
+	TextArea txaDatos = new TextArea("", 10, 60, TextArea.SCROLLBARS_VERTICAL_ONLY);
+	Button btnPdf = new Button("Exportar a PDF");
+	Button btnVolver = new Button("Volver");
+
+	Dialog dlgMensaje;
+	Label lblMensajeDlg = new Label("", Label.CENTER);
+	Button btnOk = new Button("OK");
+
+	public ConsultaCreacion() 
+	{
+		setLayout(null);
+		setTitle("Listado de Relaciones de Autoría");
+
+		lblTitulo.setBounds(20, 45, 500, 25);
+		lblTitulo.setFont(new Font("Arial", Font.BOLD, 14));
+
+		txaDatos.setBounds(20, 85, 500, 200);
+		txaDatos.setEditable(false);
+		txaDatos.setFont(new Font("Courier New", Font.PLAIN, 12));
+
+		btnPdf.setBounds(120, 300, 130, 30);
+		btnVolver.setBounds(270, 300, 130, 30);
+
+		add(lblTitulo); add(txaDatos); add(btnPdf); add(btnVolver);
+		btnPdf.addActionListener(this);
+		btnVolver.addActionListener(this);
+		addWindowListener(this);
+
+		dlgMensaje = new Dialog(this, "Aviso", true);
+		dlgMensaje.setLayout(null);
+		lblMensajeDlg.setBounds(20, 45, 260, 25);
+		btnOk.setBounds(110, 85, 80, 25);
+		dlgMensaje.add(lblMensajeDlg); dlgMensaje.add(btnOk);
+		dlgMensaje.setSize(300, 140);
+		dlgMensaje.setResizable(false);
+		dlgMensaje.setLocationRelativeTo(this);
+		btnOk.addActionListener(this);
+
+		ejecutarConsulta();
+
+		setSize(540, 360);
+		setResizable(false);
+		setLocationRelativeTo(null);
+		setVisible(true);
+	}
+
+	private void ejecutarConsulta() 
+	{
+		String sql = "SELECT c.idCreacion, e.nombreEscritor, e.apellidosEscritor, l.nombreLibro " +
+		             "FROM creacion c " +
+		             "INNER JOIN escritores e ON c.idEscritorFK = e.idEscritor " +
+		             "INNER JOIN libros l ON c.idLibroFK = l.idLibro";
+		try (Connection con = ConexionBD.conectar(); 
+			 Statement st = con.createStatement(); 
+			 ResultSet rs = st.executeQuery(sql)) 
+		{
+			StringBuilder sb = new StringBuilder();
+			sb.append(String.format("%-4s %-30s %-30s\n", "ID", "ESCRITOR / AUTOR", "LIBRO VINCULADO"));
+			sb.append("======================================================================\n");
+
+			while(rs.next()) 
+			{
+				String nombreAutor = rs.getString("nombreEscritor") + " " + rs.getString("apellidosEscritor");
+				sb.append(String.format("%-4d %-30s %-30s\n", 
+					rs.getInt("idCreacion"), 
+					nombreAutor, 
+					rs.getString("nombreLibro")
+				));
+			}
+			txaDatos.setText(sb.toString());
+		} catch (Exception e) { e.printStackTrace(); }
+	}
+
+	public void actionPerformed(ActionEvent e) 
+	{
+		Object src = e.getSource();
+		if(src.equals(btnVolver)) this.dispose();
+		else if (src.equals(btnOk)) dlgMensaje.dispose();
+		else if(src.equals(btnPdf)) 
+		{
+			String contenido = txaDatos.getText();
+			if (contenido.isEmpty()) return;
+
+			FileDialog selectorArchivos = new FileDialog(this, "Guardar Reporte PDF", FileDialog.SAVE);
+			selectorArchivos.setFile("Reporte_Creaciones.pdf");
+			selectorArchivos.setVisible(true);
+
+			String nombreFichero = selectorArchivos.getFile();
+			String directorio = selectorArchivos.getDirectory();
+
+			if (nombreFichero == null || directorio == null) return;
+
+			if (!nombreFichero.toLowerCase().endsWith(".pdf")) {
+				nombreFichero += ".pdf";
+			}
+
+			File archivoDestino = new File(directorio + nombreFichero);
+
+			try (FileOutputStream fos = new FileOutputStream(archivoDestino);
+				 BufferedOutputStream bos = new BufferedOutputStream(fos)) 
+			{
+				StringBuilder streamContent = new StringBuilder();
+				streamContent.append("BT\n/F1 10 Tf\n13 TL\n50 750 Td\n");
+				streamContent.append("(======================================================================\n) Tj T*");
+				streamContent.append("(                     INFORME DE AUTORIAS (N:M) REGISTRADAS            \n) Tj T*");
+				streamContent.append("(======================================================================\n) Tj T*");
+				
+				String[] lineas = contenido.split("\n");
+				for (String linea : lineas) {
+					String formateada = linea.replace("(", "\\(").replace(")", "\\)");
+					streamContent.append("(").append(formateada).append(") Tj T*\n");
+				}
+				streamContent.append("ET\n");
+
+				byte[] streamBytes = streamContent.toString().getBytes("ISO-8859-1");
+				int streamLength = streamBytes.length;
+
+				String header = "%PDF-1.4\n";
+				String obj1 = "1 0 obj\n<</Type /Catalog /Pages 2 0 R>>\nendobj\n";
+				String obj2 = "2 0 obj\n<</Type /Pages /Kids [3 0 R] /Count 1>>\nendobj\n";
+				String obj3 = "3 0 obj\n<</Type /Page /Parent 2 0 R /Resources <</Font <</F1 <</Type /Font /Subtype /Type1 /BaseFont /Courier>>>>>> /Contents 4 0 R>>\nendobj\n";
+				String obj4Header = "4 0 obj\n<</Length " + streamLength + ">>\nstream\n";
+				String obj4Footer = "\nendstream\nendobj\n";
+
+				int pos1 = header.length();
+				int pos2 = pos1 + obj1.length();
+				int pos3 = pos2 + obj2.length();
+				int pos4 = pos3 + obj3.length();
+				int posTrailer = pos4 + obj4Header.length() + streamLength + obj4Footer.length();
+
+				String xrefAndTrailer = "xref\n0 5\n0000000000 65535 f \n" +
+					String.format("%010d 00000 n \n", pos1) +
+					String.format("%010d 00000 n \n", pos2) +
+					String.format("%010d 00000 n \n", pos3) +
+					String.format("%010d 00000 n \n", pos4) +
+					"trailer\n<</Size 5 /Root 1 0 R>>\nstartxref\n" + posTrailer + "\n%%EOF\n";
+
+				bos.write(header.getBytes("ISO-8859-1"));
+				bos.write(obj1.getBytes("ISO-8859-1"));
+				bos.write(obj2.getBytes("ISO-8859-1"));
+				bos.write(obj3.getBytes("ISO-8859-1"));
+				bos.write(obj4Header.getBytes("ISO-8859-1"));
+				bos.write(streamBytes);
+				bos.write(obj4Footer.getBytes("ISO-8859-1"));
+				bos.write(xrefAndTrailer.getBytes("ISO-8859-1"));
+				bos.flush();
+
+				LogUtil.registrarAccion(Login.usuarioActual, "Exportación a PDF en: " + nombreFichero);
+				mostrarAlerta("PDF guardado con éxito.");
+
+				if (Desktop.isDesktopSupported()) Desktop.getDesktop().open(archivoDestino);
+			} catch (Exception ex) { mostrarAlerta("Error al guardar el PDF."); }
+		}
+	}
+
+	private void mostrarAlerta(String msg) 
+	{
+		lblMensajeDlg.setText(msg);
+		dlgMensaje.setLocationRelativeTo(this);
+		dlgMensaje.setVisible(true);
+	}
+
+	public void windowClosing(WindowEvent e) { this.dispose(); }
+	public void windowActivated(WindowEvent e) {}
+	public void windowClosed(WindowEvent e) {}
+	public void windowDeactivated(WindowEvent e) {}
+	public void windowDeiconified(WindowEvent e) {}
+	public void windowIconified(WindowEvent e) {}
+	public void windowOpened(WindowEvent e) {}
+}
