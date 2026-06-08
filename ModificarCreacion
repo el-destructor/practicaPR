@@ -1,0 +1,120 @@
+package es.studium.LoginLibros;
+
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.*;
+
+public class ModificarCreacion extends Frame implements WindowListener, ActionListener 
+{
+	private static final long serialVersionUID = 1L;
+
+	Choice choBuscar = new Choice();
+	Button btnCargar = new Button("Cargar");
+	Choice choEscritor = new Choice();
+	Choice choLibro = new Choice();
+	Button btnModificar = new Button("Actualizar Vínculo");
+
+	public ModificarCreacion() 
+	{
+		setLayout(null);
+		setTitle("Modificar Relación de Autoría");
+
+		choBuscar.setBounds(30, 45, 240, 25);  
+		btnCargar.setBounds(280, 45, 80, 25);
+		choEscritor.setBounds(140, 100, 220, 25);
+		choLibro.setBounds(140, 150, 220, 25);
+		btnModificar.setBounds(120, 200, 150, 30);
+
+		cargarComboCreaciones();
+		cargarEscritores();
+		cargarLibros();
+
+		add(choBuscar); add(btnCargar); add(choEscritor); add(choLibro); add(btnModificar);
+
+		btnCargar.addActionListener(this);
+		btnModificar.addActionListener(this);
+		addWindowListener(this);
+
+		setSize(390, 260);
+		setResizable(false);
+		setLocationRelativeTo(null);
+		setVisible(true);
+	}
+
+	private void cargarComboCreaciones() 
+	{
+		choBuscar.removeAll();
+		String sql = "SELECT c.idCreacion, e.nombreEscritor, l.nombreLibro FROM creacion c " +
+		             "INNER JOIN escritores e ON c.idEscritorFK = e.idEscritor " +
+		             "INNER JOIN libros l ON c.idLibroFK = l.idLibro";
+		try (Connection con = ConexionBD.conectar(); Statement st = con.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+			while (rs.next()) choBuscar.add(rs.getInt("idCreacion") + " - " + rs.getString("nombreEscritor") + " -> " + rs.getString("nombreLibro"));
+		} catch (Exception e) {}
+	}
+
+	private void cargarEscritores() {
+		try (Connection con = ConexionBD.conectar(); ResultSet rs = con.createStatement().executeQuery("SELECT idEscritor, nombreEscritor FROM escritores")) {
+			while(rs.next()) choEscritor.add(rs.getInt("idEscritor") + " - " + rs.getString("nombreEscritor"));
+		} catch (Exception e) {}
+	}
+
+	private void cargarLibros() {
+		try (Connection con = ConexionBD.conectar(); ResultSet rs = con.createStatement().executeQuery("SELECT idLibro, nombreLibro FROM libros")) {
+			while(rs.next()) choLibro.add(rs.getInt("idLibro") + " - " + rs.getString("nombreLibro"));
+		} catch (Exception e) {}
+	}
+
+	public void actionPerformed(ActionEvent e) 
+	{
+		Object src = e.getSource();
+		if (src.equals(btnCargar)) 
+		{
+			if (choBuscar.getSelectedItem() == null) return;
+			int idSeleccionado = Integer.parseInt(choBuscar.getSelectedItem().split(" - ")[0]);
+			
+			try (Connection con = ConexionBD.conectar(); 
+				 PreparedStatement pst = con.prepareStatement("SELECT idEscritorFK, idLibroFK FROM creacion WHERE idCreacion = ?")) {
+				pst.setInt(1, idSeleccionado);
+				ResultSet rs = pst.executeQuery();
+				if (rs.next()) {
+					// Posicionar los combos internos en los registros guardados
+					int fkEscritor = rs.getInt("idEscritorFK");
+					int fkLibro = rs.getInt("idLibroFK");
+					
+					for(int i=0; i<choEscritor.getItemCount(); i++) {
+						if(Integer.parseInt(choEscritor.getItem(i).split(" - ")[0]) == fkEscritor) choEscritor.select(i);
+					}
+					for(int i=0; i<choLibro.getItemCount(); i++) {
+						if(Integer.parseInt(choLibro.getItem(i).split(" - ")[0]) == fkLibro) choLibro.select(i);
+					}
+				}
+			} catch(Exception ex) {}
+		} 
+		else if (src.equals(btnModificar)) 
+		{
+			if (choBuscar.getSelectedItem() == null) return;
+			int idCreacion = Integer.parseInt(choBuscar.getSelectedItem().split(" - ")[0]);
+			int nuevoEscritor = Integer.parseInt(choEscritor.getSelectedItem().split(" - ")[0]);
+			int nuevoLibro = Integer.parseInt(choLibro.getSelectedItem().split(" - ")[0]);
+			
+			String query = "UPDATE creacion SET idEscritorFK=?, idLibroFK=? WHERE idCreacion=?";
+			try (Connection con = ConexionBD.conectar(); PreparedStatement pst = con.prepareStatement(query)) {
+				pst.setInt(1, nuevoEscritor);
+				pst.setInt(2, nuevoLibro);
+				pst.setInt(3, idCreacion);
+				pst.executeUpdate();
+				
+				LogUtil.registrarAccion(Login.usuarioActual, "Modifico Relacion Creación ID: " + idCreacion);
+				this.dispose();
+			} catch(Exception ex) {}
+		}
+	}
+
+	public void windowClosing(WindowEvent e) { this.dispose(); }
+	public void windowActivated(WindowEvent e) {}
+	public void windowClosed(WindowEvent e) {}
+	public void windowDeactivated(WindowEvent e) {}
+	public void windowDeiconified(WindowEvent e) {}
+	public void windowIconified(WindowEvent e) {}
+	public void windowOpened(WindowEvent e) {}
+}
