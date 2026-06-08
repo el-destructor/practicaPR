@@ -1,0 +1,85 @@
+package es.studium.LoginLibros;
+
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.*;
+import java.text.SimpleDateFormat;
+
+public class AltaEscritor extends Frame implements WindowListener, ActionListener 
+{
+	private static final long serialVersionUID = 1L;
+
+	Label lblNom = new Label("Nombre Escritor:");
+	TextField txtNom = new TextField();
+	Label lblApe = new Label("Apellidos:");
+	TextField txtApe = new TextField();
+	Label lblFecha = new Label("F. Nacimiento (dd/mm/aaaa):");
+	TextField txtFecha = new TextField();
+	Button btnGuardar = new Button("Registrar Escritor");
+
+	public AltaEscritor() 
+	{
+		setLayout(null);
+		setTitle("Alta Escritor");
+
+		lblNom.setBounds(30, 50, 160, 25);   txtNom.setBounds(200, 50, 180, 25);
+		lblApe.setBounds(30, 90, 160, 25);   txtApe.setBounds(200, 90, 180, 25);
+		lblFecha.setBounds(30, 130, 160, 25); txtFecha.setBounds(200, 130, 180, 25);
+		btnGuardar.setBounds(140, 180, 130, 30);
+
+		add(lblNom); add(txtNom); add(lblApe); add(txtApe); add(lblFecha); add(txtFecha); add(btnGuardar);
+		btnGuardar.addActionListener(this);
+		addWindowListener(this);
+
+		setSize(410, 240);
+		setResizable(false);
+		setLocationRelativeTo(null);
+		setVisible(true);
+	}
+
+	public void actionPerformed(ActionEvent e) 
+	{
+		String nom = txtNom.getText().trim();
+		String ape = txtApe.getText().trim();
+		String fechaEntrada = txtFecha.getText().trim();
+		if(nom.isEmpty() || ape.isEmpty() || fechaEntrada.isEmpty()) return;
+
+		String fechaParaBD = "";
+		try 
+		{
+			// Tarea 5: Tratar la fecha europea y transformarla al formato YYYY-MM-DD que traga MySQL
+			SimpleDateFormat formatoEntrada = new SimpleDateFormat("dd/MM/yyyy");
+			SimpleDateFormat formatoSalida = new SimpleDateFormat("yyyy-MM-dd");
+			java.util.Date fechaParseada = formatoEntrada.parse(fechaEntrada);
+			fechaParaBD = formatoSalida.format(fechaParseada);
+		} 
+		catch (Exception ex) 
+		{
+			txtFecha.setText("");
+			System.out.println("Error: Formato incorrecto.");
+			return;
+		}
+
+		String sql = "INSERT INTO escritores (nombreEscritor, apellidosEscritor, fechaNacimientoEscritor) VALUES (?, ?, ?)";
+		try (Connection con = ConexionBD.conectar(); 
+			 PreparedStatement pst = con.prepareStatement(sql)) 
+		{
+			pst.setString(1, nom);
+			pst.setString(2, ape);
+			pst.setString(3, fechaParaBD);
+			pst.executeUpdate();
+			
+			LogUtil.registrarAccion(Login.usuarioActual, "Alta Escritor: " + nom + " " + ape);
+			this.dispose();
+		} 
+		catch (Exception ex) { System.out.println(ex.getMessage()); }
+	}
+
+	public void windowClosing(WindowEvent e) { this.dispose(); }
+	public void windowActivated(WindowEvent e) {}
+	public void windowClosed(WindowEvent e) {}
+	public void windowDeactivated(WindowEvent e) {}
+	public void windowDeiconified(WindowEvent e) {}
+	public void windowIconified(WindowEvent e) {}
+	public void windowOpened(WindowEvent e) {}
+}
