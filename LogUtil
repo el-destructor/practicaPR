@@ -1,0 +1,32 @@
+package es.studium.LoginLibros;
+
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+public class LogUtil 
+{
+	private static final String ARCHIVO_LOG = "movimientos.log";
+
+	public static void registrarAccion(String usuario, String accion) 
+	{
+		// Tarea 5: Formato de fecha y hora europeo (dd-MM-yyyy)
+		DateTimeFormatter formateador = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
+		String fecha = LocalDateTime.now().format(formateador);
+		
+		// Tarea 4: Estructura del log entre corchetes
+		String lineaLog = "[" + fecha + "] [" + usuario + "] [" + accion + "]";
+		
+		// El true al final del FileWriter indica que añada texto sin borrar lo anterior
+		try (BufferedWriter escritor = new BufferedWriter(new FileWriter(ARCHIVO_LOG, true))) 
+		{
+			escritor.write(lineaLog);
+			escritor.newLine();
+		} 
+		catch (Exception e) 
+		{
+			System.out.println("Error al escribir el log: " + e.getMessage());
+		}
+	}
+}
