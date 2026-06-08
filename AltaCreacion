@@ -1,0 +1,90 @@
+package es.studium.LoginLibros;
+
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.*;
+
+public class AltaCreacion extends Frame implements WindowListener, ActionListener
+{
+	private static final long serialVersionUID = 1L;
+
+	Label lblEscritor = new Label("Seleccione Escritor:");
+	Choice choEscritor = new Choice();
+	Label lblLibro = new Label("Seleccione Libro:");
+	Choice choLibro = new Choice();
+	Button btnGuardar = new Button("Vincular Autoría");
+
+	public AltaCreacion()
+	{
+		setLayout(null);
+		setTitle("Nueva Creación");
+
+		lblEscritor.setBounds(30, 50, 140, 25); choEscritor.setBounds(180, 50, 200, 25);
+		lblLibro.setBounds(30, 100, 140, 25); choLibro.setBounds(180, 100, 200, 25);
+		btnGuardar.setBounds(130, 160, 140, 30);
+
+		cargarEscritores();
+		cargarLibros();
+
+		add(lblEscritor); add(choEscritor); add(lblLibro); add(choLibro); add(btnGuardar);
+		btnGuardar.addActionListener(this);
+		addWindowListener(this);
+
+		setSize(410, 220);
+		setResizable(false);
+		setLocationRelativeTo(null);
+		setVisible(true);
+	}
+
+	private void cargarEscritores() 
+	{
+		try (Connection con = ConexionBD.conectar();
+			 ResultSet rs = con.createStatement().executeQuery("SELECT idEscritor, nombreEscritor FROM escritores")) 
+		{
+			while(rs.next()) 
+			{
+				choEscritor.add(rs.getInt("idEscritor") + " - " + rs.getString("nombreEscritor"));
+			}
+		} catch (Exception e) {}
+	}
+
+	private void cargarLibros() 
+	{
+		try (Connection con = ConexionBD.conectar();
+			 ResultSet rs = con.createStatement().executeQuery("SELECT idLibro, nombreLibro FROM libros")) 
+		{
+			while(rs.next()) 
+			{
+				choLibro.add(rs.getInt("idLibro") + " - " + rs.getString("nombreLibro"));
+			}
+		} catch (Exception e) {}
+	}
+
+	public void actionPerformed(ActionEvent e)
+	{
+		if(choEscritor.getSelectedItem() == null || choLibro.getSelectedItem() == null) return;
+
+		int idEscritor = Integer.parseInt(choEscritor.getSelectedItem().split(" - ")[0]);
+		int idLibro = Integer.parseInt(choLibro.getSelectedItem().split(" - ")[0]);
+
+		try (Connection con = ConexionBD.conectar();
+			 PreparedStatement pst = con.prepareStatement("INSERT INTO creacion (idEscritorFK, idLibroFK) VALUES (?, ?)")) 
+		{
+			pst.setInt(1, idEscritor);
+			pst.setInt(2, idLibro);
+			pst.executeUpdate();
+
+			LogUtil.registrarAccion(Login.usuarioActual, "Nueva Creación: Escritor " + idEscritor + " con Libro " + idLibro);
+			this.dispose();
+		} 
+		catch (Exception ex) { System.out.println(ex.getMessage()); }
+	}
+
+	public void windowClosing(WindowEvent e) { this.dispose(); }
+	public void windowActivated(WindowEvent e) {}
+	public void windowClosed(WindowEvent e) {}
+	public void windowDeactivated(WindowEvent e) {}
+	public void windowDeiconified(WindowEvent e) {}
+	public void windowIconified(WindowEvent e) {}
+	public void windowOpened(WindowEvent e) {}
+}
