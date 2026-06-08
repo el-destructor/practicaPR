@@ -1,0 +1,104 @@
+package es.studium.LoginLibros;
+
+import java.awt.*;
+import java.awt.event.*;
+
+public class SubMenuGestion extends Frame implements WindowListener, ActionListener 
+{
+	private static final long serialVersionUID = 1L;
+	String modulo, rol;
+
+	Label lblTitulo = new Label("", Label.CENTER);
+	Button btnAlta = new Button("Alta");
+	Button btnBaja = new Button("Baja");
+	Button btnModificar = new Button("Modificar");
+	Button btnConsulta = new Button("Consulta");
+	Button btnVolver = new Button("Volver");
+
+	public SubMenuGestion(String modulo, String rol) 
+	{
+		this.modulo = modulo;
+		this.rol = rol;
+		
+		setLayout(null);
+		setTitle("Operaciones - " + modulo);
+
+		lblTitulo.setText("MÓDULO: " + modulo.toUpperCase());
+		lblTitulo.setBounds(20, 45, 310, 25);
+		lblTitulo.setFont(new Font("Arial", Font.BOLD, 12));
+
+		btnAlta.setBounds(40, 90, 110, 30);
+		btnBaja.setBounds(180, 90, 110, 30);
+		btnModificar.setBounds(40, 135, 110, 30);
+		btnConsulta.setBounds(180, 135, 110, 30);
+		btnVolver.setBounds(110, 190, 110, 30);
+
+		// CONTROL DE ROLES: Desactivar botones si el usuario tiene rol básico o normal
+		// NOTA: Según tus requerimientos previos, si el básico SOLO puede dar ALTAS, dejamos btnAlta habilitado
+		if (rol.equalsIgnoreCase("basico") || rol.equalsIgnoreCase("normal")) 
+		{
+			btnBaja.setEnabled(false);
+			btnModificar.setEnabled(false);
+		}
+
+		add(lblTitulo); add(btnAlta); add(btnBaja); add(btnModificar); add(btnConsulta); add(btnVolver);
+
+		btnAlta.addActionListener(this);
+		btnBaja.addActionListener(this);
+		btnModificar.addActionListener(this);
+		btnConsulta.addActionListener(this);
+		btnVolver.addActionListener(this);
+		addWindowListener(this);
+
+		setSize(340, 250);
+		setResizable(false);
+		setLocationRelativeTo(null);
+		setVisible(true);
+	}
+
+	public void actionPerformed(ActionEvent e) 
+	{
+		Object src = e.getSource();
+		
+		if (src.equals(btnVolver)) 
+		{
+			this.dispose();
+		}
+		else if (src.equals(btnAlta)) 
+		{
+			if (modulo.equals("Libros")) new AltaLibro();
+			if (modulo.equals("Escritores")) new AltaEscritor();
+			if (modulo.equals("Editoriales")) new AltaEditorial();
+			if (modulo.equals("Creaciones")) new AltaCreacion();
+		}
+		else if (src.equals(btnBaja)) 
+		{
+			if (modulo.equals("Libros")) new BajaLibro();
+			if (modulo.equals("Escritores")) new BajaEscritor();
+			if (modulo.equals("Editoriales")) new BajaEditorial();
+			if (modulo.equals("Creaciones")) new BajaCreacion();
+		}
+		else if (src.equals(btnModificar)) 
+		{
+			if (modulo.equals("Libros")) new ModificarLibro();
+			if (modulo.equals("Escritores")) new ModificarEscritor();
+			if (modulo.equals("Editoriales")) new ModificarEditorial();
+			if (modulo.equals("Creaciones")) new ModificarCreacion();
+		}
+		else if (src.equals(btnConsulta)) 
+		{
+			if (modulo.equals("Libros")) new ConsultaLibro();
+			if (modulo.equals("Escritores")) new ConsultaEscritor();
+			if (modulo.equals("Editoriales")) new ConsultaEditorial();
+			if (modulo.equals("Creaciones")) new ConsultaCreacion();
+		}
+	}
+
+	public void windowClosing(WindowEvent e) { this.dispose(); }
+	public void windowActivated(WindowEvent e) {}
+	public void windowClosed(WindowEvent e) {}
+	public void windowDeactivated(WindowEvent e) {}
+	public void windowDeiconified(WindowEvent e) {}
+	public void windowIconified(WindowEvent e) {}
+	public void windowOpened(WindowEvent e) {}
+}
