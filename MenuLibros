@@ -1,0 +1,78 @@
+package es.studium.LoginLibros;
+
+import java.awt.*;
+import java.awt.event.*;
+
+public class MenuLibros extends Frame implements WindowListener, ActionListener 
+{
+	private static final long serialVersionUID = 1L;
+	String rolUsuario;
+	
+	Label lblMenu = new Label("SISTEMA DE GESTIÓN LIBRERÍA", Label.CENTER);
+	Button btnLibros = new Button("Gestión de Libros");
+	Button btnEscritores = new Button("Escritores");
+	Button btnEditoriales = new Button("Editoriales");
+	Button btnCreaciones = new Button("Creaciones");
+	Button btnAyuda = new Button("Ayuda");
+	Button btnSalir = new Button("Cerrar Sesión");
+
+	public MenuLibros(String rol) 
+	{
+		this.rolUsuario = rol;
+		setLayout(null);
+		setTitle("Menú Principal - Rol: " + rol);
+
+		lblMenu.setBounds(30, 50, 440, 25);
+		lblMenu.setFont(new Font("Arial", Font.BOLD, 14));
+
+		btnLibros.setBounds(50, 100, 180, 35);
+		btnEscritores.setBounds(270, 100, 180, 35);
+		btnEditoriales.setBounds(50, 160, 180, 35);
+		btnCreaciones.setBounds(270, 160, 180, 35);
+		btnAyuda.setBounds(50, 220, 180, 35);
+		btnSalir.setBounds(270, 220, 180, 35);
+
+		add(lblMenu); add(btnLibros); add(btnEscritores); add(btnEditoriales); add(btnCreaciones); add(btnAyuda); add(btnSalir);
+
+		btnLibros.addActionListener(this);
+		btnEscritores.addActionListener(this);
+		btnEditoriales.addActionListener(this);
+		btnCreaciones.addActionListener(this);
+		btnAyuda.addActionListener(this);
+		btnSalir.addActionListener(this);
+		addWindowListener(this);
+
+		setSize(500, 300);
+		setResizable(false);
+		setLocationRelativeTo(null);
+		setVisible(true);
+	}
+
+	public void actionPerformed(ActionEvent e) 
+	{
+		Object src = e.getSource();
+		if (src.equals(btnSalir)) 
+		{
+			LogUtil.registrarAccion(Login.usuarioActual, "Cerró la sesión voluntariamente");
+			new Login();
+			this.dispose();
+		} 
+		else if (src.equals(btnAyuda)) 
+		{
+			LogUtil.registrarAccion(Login.usuarioActual, "Abrió el manual de ayuda HTML");
+			new VentanaAyuda(rolUsuario); // CORREGIDO: Ahora le pasa el rol de forma obligatoria
+		}
+		else if (src.equals(btnLibros)) { new SubMenuGestion("Libros", rolUsuario); }
+		else if (src.equals(btnEscritores)) { new SubMenuGestion("Escritores", rolUsuario); }
+		else if (src.equals(btnEditoriales)) { new SubMenuGestion("Editoriales", rolUsuario); }
+		else if (src.equals(btnCreaciones)) { new SubMenuGestion("Creaciones", rolUsuario); }
+	}
+
+	public void windowClosing(WindowEvent e) { System.exit(0); }
+	public void windowActivated(WindowEvent e) {}
+	public void windowClosed(WindowEvent e) {}
+	public void windowDeactivated(WindowEvent e) {}
+	public void windowDeiconified(WindowEvent e) {}
+	public void windowIconified(WindowEvent e) {}
+	public void windowOpened(WindowEvent e) {}
+}
