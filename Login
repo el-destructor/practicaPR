@@ -1,0 +1,133 @@
+package es.studium.LoginLibros;
+
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.*;
+
+public class Login extends Frame implements WindowListener, ActionListener
+{
+	private static final long serialVersionUID = 1L;
+	public static String usuarioActual = "Invitado";
+
+	Label lblTitulo = new Label("CONTROL DE ACCESO", Label.CENTER);
+	Label lblUsuario = new Label("Usuario:");
+	TextField txtUsuario = new TextField();
+	Label lblClave = new Label("Contraseña:");
+	TextField txtClave = new TextField();
+	Button btnAceptar = new Button("Aceptar");
+	Button btnLimpiar = new Button("Limpiar");
+
+	Dialog dlgError;
+	Label lblMensajeError = new Label("Usuario o contraseña incorrectos", Label.CENTER);
+	Button btnOk = new Button("OK");
+
+	public Login()
+	{
+		setLayout(null);
+		setTitle("Autenticación");
+
+		lblTitulo.setBounds(40, 40, 270, 25);
+		lblTitulo.setFont(new Font("Arial", Font.BOLD, 14));
+		lblUsuario.setBounds(40, 90, 80, 25);
+		txtUsuario.setBounds(130, 90, 180, 25);
+		lblClave.setBounds(40, 130, 80, 25);
+		txtClave.setBounds(130, 130, 180, 25);
+		txtClave.setEchoChar('*');
+
+		btnAceptar.setBounds(70, 190, 100, 30);
+		btnLimpiar.setBounds(180, 190, 100, 30);
+
+		add(lblTitulo); add(lblUsuario); add(txtUsuario); add(lblClave); add(txtClave); add(btnAceptar); add(btnLimpiar);
+
+		btnAceptar.addActionListener(this);
+		btnLimpiar.addActionListener(this);
+		addWindowListener(this);
+
+		setSize(350, 260);
+		setResizable(false);
+		setLocationRelativeTo(null);
+		setVisible(true);
+	}
+
+	public static void main(String[] args) { new Login(); }
+
+	public void actionPerformed(ActionEvent e)
+	{
+		Object src = e.getSource();
+		if (src.equals(btnLimpiar))
+		{
+			txtUsuario.setText("");
+			txtClave.setText("");
+			txtUsuario.requestFocus();
+		}
+		else if (src.equals(btnAceptar))
+		{
+			validarCredenciales();
+		}
+		else if (src.equals(btnOk))
+		{
+			dlgError.dispose();
+		}
+	}
+
+	private void validarCredenciales()
+	{
+		String usuario = txtUsuario.getText().trim();
+		String clave = txtClave.getText().trim();
+
+		if (usuario.isEmpty() || clave.isEmpty())
+		{
+			mostrarVentanaError();
+			return;
+		}
+
+		String sql = "SELECT tipoUsuario FROM usuarios WHERE nombreUsuario = ? AND claveUsuario = ?";
+		try (Connection con = ConexionBD.conectar(); 
+			 PreparedStatement pst = con.prepareStatement(sql))
+		{
+			pst.setString(1, usuario);
+			pst.setString(2, clave);
+			ResultSet rs = pst.executeQuery();
+			
+			if (rs.next())
+			{
+				String rol = rs.getString("tipoUsuario");
+				usuarioActual = usuario; 
+				LogUtil.registrarAccion(usuarioActual, "Inicio de sesion correcto (" + rol + ")");
+				
+				new MenuLibros(rol); // Abre el menú pasándole el rol
+				this.dispose();
+			}
+			else
+			{
+				LogUtil.registrarAccion(usuario, "Intento de acceso fallido");
+				mostrarVentanaError();
+			}
+		}
+		catch (Exception ex)
+		{
+			System.out.println("Error en Login: " + ex.getMessage());
+		}
+	}
+
+	private void mostrarVentanaError()
+	{
+		dlgError = new Dialog(this, "Error de Acceso", true);
+		dlgError.setLayout(null);
+		lblMensajeError.setBounds(20, 40, 260, 25);
+		btnOk.setBounds(110, 85, 80, 25);
+		dlgError.add(lblMensajeError); dlgError.add(btnOk);
+		btnOk.addActionListener(this);
+		dlgError.setSize(300, 140);
+		dlgError.setLocationRelativeTo(this);
+		dlgError.setVisible(true);
+	}
+
+	public void windowClosing(WindowEvent e) { System.exit(0); }
+	public void windowActivated(WindowEvent e) {}
+	public void windowClosed(WindowEvent e) {}
+	public void windowDeactivated(WindowEvent e) {}
+	public void windowDeiconified(WindowEvent e) {}
+	public void windowIconified(WindowEvent e) {}
+	public void windowOpened(WindowEvent e) {}
+}
