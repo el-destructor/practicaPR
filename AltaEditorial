@@ -1,0 +1,68 @@
+package es.studium.LoginLibros;
+
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.*;
+
+public class AltaEditorial extends Frame implements WindowListener, ActionListener
+{
+	private static final long serialVersionUID = 1L;
+
+	Label lblNom = new Label("Nombre Editorial:");
+	TextField txtNom = new TextField();
+	Label lblCorreo = new Label("Correo Electrónico:");
+	TextField txtCorreo = new TextField();
+	Label lblTlf = new Label("Teléfono:");
+	TextField txtTlf = new TextField();
+	Button btnGuardar = new Button("Registrar Editorial");
+
+	public AltaEditorial()
+	{
+		setLayout(null);
+		setTitle("Alta Editorial");
+
+		lblNom.setBounds(30, 50, 130, 25); txtNom.setBounds(170, 50, 180, 25);
+		lblCorreo.setBounds(30, 90, 130, 25); txtCorreo.setBounds(170, 90, 180, 25);
+		lblTlf.setBounds(30, 130, 130, 25); txtTlf.setBounds(170, 130, 180, 25);
+		btnGuardar.setBounds(130, 180, 130, 30);
+
+		add(lblNom); add(txtNom); add(lblCorreo); add(txtCorreo); add(lblTlf); add(txtTlf); add(btnGuardar);
+		btnGuardar.addActionListener(this);
+		addWindowListener(this);
+
+		setSize(390, 240);
+		setResizable(false);
+		setLocationRelativeTo(null);
+		setVisible(true);
+	}
+
+	public void actionPerformed(ActionEvent e)
+	{
+		String nom = txtNom.getText().trim();
+		String corr = txtCorreo.getText().trim();
+		String tlf = txtTlf.getText().trim();
+		if(nom.isEmpty() || corr.isEmpty() || tlf.isEmpty()) return;
+
+		String sql = "INSERT INTO editoriales (nombreEditorial, correoEditorial, telefonoEditorial) VALUES (?, ?, ?)";
+		try (Connection con = ConexionBD.conectar(); 
+			 PreparedStatement pst = con.prepareStatement(sql)) 
+		{
+			pst.setString(1, nom);
+			pst.setString(2, corr);
+			pst.setString(3, tlf);
+			pst.executeUpdate();
+			
+			LogUtil.registrarAccion(Login.usuarioActual, "Alta Editorial: " + nom);
+			this.dispose();
+		} 
+		catch (Exception ex) { System.out.println(ex.getMessage()); }
+	}
+
+	public void windowClosing(WindowEvent e) { this.dispose(); }
+	public void windowActivated(WindowEvent e) {}
+	public void windowClosed(WindowEvent e) {}
+	public void windowDeactivated(WindowEvent e) {}
+	public void windowDeiconified(WindowEvent e) {}
+	public void windowIconified(WindowEvent e) {}
+	public void windowOpened(WindowEvent e) {}
+}
