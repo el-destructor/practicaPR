@@ -1,0 +1,102 @@
+package es.studium.LoginLibros;
+
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.*;
+
+public class BajaEscritor extends Frame implements WindowListener, ActionListener 
+{
+	private static final long serialVersionUID = 1L;
+
+	Label lblTexto = new Label("Seleccione el escritor que desea dar de baja:");
+	Choice choRegistros = new Choice();
+	Button btnBorrar = new Button("Eliminar Registro");
+	Button btnVolver = new Button("Volver");
+
+	Dialog dlgConfirmacion;
+	Label lblSeguro = new Label("¿Desea eliminar definitivamente este escritor?", Label.CENTER);
+	Button btnSi = new Button("Sí");
+	Button btnNo = new Button("No");
+
+	public BajaEscritor() 
+	{
+		setLayout(null);
+		setTitle("Baja Escritor");
+
+		lblTexto.setBounds(40, 50, 320, 25);
+		choRegistros.setBounds(40, 85, 320, 25);
+		btnBorrar.setBounds(80, 140, 115, 30);
+		btnVolver.setBounds(205, 140, 115, 30);
+
+		actualizarDesplegable();
+
+		add(lblTexto); add(choRegistros); add(btnBorrar); add(btnVolver);
+
+		btnBorrar.addActionListener(this);
+		btnVolver.addActionListener(this);
+		addWindowListener(this);
+
+		setSize(400, 200);
+		setResizable(false);
+		setLocationRelativeTo(null);
+		setVisible(true);
+	}
+
+	private void actualizarDesplegable() 
+	{
+		choRegistros.removeAll();
+		try (Connection con = ConexionBD.conectar();
+			 Statement st = con.createStatement();
+			 ResultSet rs = st.executeQuery("SELECT idEscritor, nombreEscritor, apellidosEscritor FROM escritores")) 
+		{
+			while (rs.next()) {
+				choRegistros.add(rs.getInt("idEscritor") + " - " + rs.getString("nombreEscritor") + " " + rs.getString("apellidosEscritor"));
+			}
+		} catch (Exception e) { System.out.println(e.getMessage()); }
+	}
+
+	public void actionPerformed(ActionEvent e) 
+	{
+		Object src = e.getSource();
+		if (src.equals(btnVolver)) this.dispose();
+		else if (src.equals(btnBorrar)) { if (choRegistros.getSelectedItem() != null) abrirDialogo(); }
+		else if (src.equals(btnNo)) dlgConfirmacion.dispose();
+		else if (src.equals(btnSi)) confirmarBorrado();
+	}
+
+	private void abrirDialogo() 
+	{
+		dlgConfirmacion = new Dialog(this, "Confirmación Obligatoria", true);
+		dlgConfirmacion.setLayout(null);
+		lblSeguro.setBounds(15, 40, 270, 25);
+		btnSi.setBounds(65, 85, 75, 25); btnNo.setBounds(160, 85, 75, 25);
+		dlgConfirmacion.add(lblSeguro); dlgConfirmacion.add(btnSi); dlgConfirmacion.add(btnNo);
+		btnSi.addActionListener(this); btnNo.addActionListener(this);
+		dlgConfirmacion.setSize(300, 140);
+		dlgConfirmacion.setLocationRelativeTo(this);
+		dlgConfirmacion.setVisible(true);
+	}
+
+	private void confirmarBorrado() 
+	{
+		int id = Integer.parseInt(choRegistros.getSelectedItem().split(" - ")[0]);
+		try (Connection con = ConexionBD.conectar();
+			 PreparedStatement pst = con.prepareStatement("DELETE FROM escritores WHERE idEscritor = ?")) 
+		{
+			pst.setInt(1, id);
+			pst.executeUpdate();
+			
+			LogUtil.registrarAccion(Login.usuarioActual, "Baja de escritor ID: " + id);
+			dlgConfirmacion.dispose();
+			actualizarDesplegable();
+		} catch (Exception ex) { System.out.println(ex.getMessage()); }
+	}
+
+	public void windowClosing(WindowEvent e) { this.dispose(); }
+	public void windowActivated(WindowEvent e) {}
+	public void windowClosed(WindowEvent e) {}
+	public void windowDeactivated(WindowEvent e) {}
+	public void windowDeiconified(WindowEvent e) {}
+	public void windowIconified(WindowEvent e) {}
+	public void windowOpened(WindowEvent e) {}
+}
