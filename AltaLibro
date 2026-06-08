@@ -1,0 +1,197 @@
+package es.studium.LoginLibros;
+
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.*;
+
+public class AltaLibro extends Frame implements WindowListener, ActionListener 
+{
+	private static final long serialVersionUID = 1L;
+
+	Label lblTitulo = new Label("Alta de Libro", Label.CENTER);
+	Label lblNombre = new Label("Nombre Libro:");
+	TextField txtNombre = new TextField();
+	Label lblGenero = new Label("Género Libro:");
+	TextField txtGenero = new TextField();
+	Label lblPrecio = new Label("Precio Libro:");
+	TextField txtPrecio = new TextField(); 
+	Label lblEditorial = new Label("Editorial:");
+	TextField txtEditorial = new TextField(); 
+	Button btnRegistrar = new Button("Registrar Libro");
+	Button btnVolver = new Button("Volver");
+
+	// Componentes del diálogo creados una sola vez para evitar bloqueos
+	Dialog dlgMensaje;
+	Label lblMensajeDlg = new Label("", Label.CENTER);
+	Button btnOk = new Button("OK");
+
+	public AltaLibro() 
+	{
+		setLayout(null);
+		setTitle("Alta de Libro");
+
+		lblTitulo.setBounds(30, 45, 340, 25);
+		lblTitulo.setFont(new Font("Arial", Font.BOLD, 16));
+		lblNombre.setBounds(40, 95, 100, 25);    
+		txtNombre.setBounds(150, 95, 200, 25);
+		lblGenero.setBounds(40, 135, 100, 25);  
+		txtGenero.setBounds(150, 135, 200, 25);
+		lblPrecio.setBounds(40, 175, 100, 25);  
+		txtPrecio.setBounds(150, 175, 200, 25);
+		lblEditorial.setBounds(40, 215, 100, 25); 
+		txtEditorial.setBounds(150, 215, 200, 25);
+
+		btnRegistrar.setBounds(80, 270, 115, 30);
+		btnVolver.setBounds(205, 270, 115, 30);
+
+		add(lblTitulo); add(lblNombre); add(txtNombre); add(lblGenero); add(txtGenero); 
+		add(lblPrecio); add(txtPrecio); add(lblEditorial); add(txtEditorial); add(btnRegistrar); add(btnVolver);
+
+		// Eventos principales del Frame
+		btnRegistrar.addActionListener(this);
+		btnVolver.addActionListener(this);
+		addWindowListener(this);
+
+		// Construcción estática del diálogo para que no acumule listeners en memoria
+		dlgMensaje = new Dialog(this, "Aviso del Sistema", true);
+		dlgMensaje.setLayout(null);
+		lblMensajeDlg.setBounds(20, 45, 260, 25);
+		btnOk.setBounds(110, 85, 80, 25);
+		dlgMensaje.add(lblMensajeDlg); 
+		dlgMensaje.add(btnOk);
+		dlgMensaje.setSize(300, 140);
+		dlgMensaje.setResizable(false);
+		dlgMensaje.setLocationRelativeTo(this);
+		
+		// Listener para el botón OK del diálogo asignado una única vez
+		btnOk.addActionListener(this);
+		
+		// Evento para cerrar el diálogo si pulsan la cruz superior derecha
+		dlgMensaje.addWindowListener(new WindowAdapter() {
+			public void windowClosing(WindowEvent e) { dlgMensaje.dispose(); }
+		});
+
+		setSize(400, 340);
+		setResizable(false);
+		setLocationRelativeTo(null); 
+		setVisible(true);
+	}
+
+	public void actionPerformed(ActionEvent e) 
+	{
+		Object src = e.getSource();
+		if (src.equals(btnVolver)) 
+		{ 
+			this.dispose(); 
+		}
+		else if (src.equals(btnRegistrar)) 
+		{ 
+			guardarDatos(); 
+		}
+		else if (src.equals(btnOk)) 
+		{ 
+			dlgMensaje.dispose(); 
+		}
+	}
+
+	private void guardarDatos() 
+	{
+		String nombre = txtNombre.getText().trim();
+		String genero = txtGenero.getText().trim();
+		String precioStr = txtPrecio.getText().trim();
+		String nombreEditorial = txtEditorial.getText().trim();
+
+		// Validación de campos vacíos
+		if (nombre.isEmpty() || genero.isEmpty() || precioStr.isEmpty() || nombreEditorial.isEmpty()) 
+		{
+			mostrarAlerta("Por favor, rellene todos los campos.");
+			return;
+		}
+
+		try (Connection con = ConexionBD.conectar()) 
+		{
+			// Reemplazar comas por puntos para evitar errores de formato (ej. 15,50 -> 15.50)
+			precioStr = precioStr.replace(',', '.');
+			double precio = Double.parseDouble(precioStr);
+			
+			// Comprobar la editorial o crearla si no existe en su tabla
+			int idEditorial = obtenerOCrearEditorial(con, nombreEditorial);
+
+			String sqlLibro = "INSERT INTO libros (generoLibro, precioLibro, nombreLibro, idEditorialFK) VALUES (?, ?, ?, ?)";
+			try (PreparedStatement pstLibro = con.prepareStatement(sqlLibro)) 
+			{
+				pstLibro.setString(1, genero);
+				pstLibro.setDouble(2, precio);
+				pstLibro.setString(3, nombre);
+				pstLibro.setInt(4, idEditorial);
+				pstLibro.executeUpdate();
+				
+				// Registro del movimiento en el Log
+				LogUtil.registrarAccion(Login.usuarioActual, "Alta de libro: " + nombre);
+				
+				mostrarAlerta("Alta de libro correcta.");
+				
+				// Limpiar los cuadros de texto tras insertar correctamente
+				txtNombre.setText(""); 
+				txtGenero.setText(""); 
+				txtPrecio.setText(""); 
+				txtEditorial.setText("");
+			}
+		} 
+		catch (NumberFormatException nfe) {
+			mostrarAlerta("El precio debe ser un número válido.");
+		}
+		catch (Exception e) { 
+			// Imprime el error exacto en la consola de Eclipse para facilitar la depuración
+			e.printStackTrace(); 
+			mostrarAlerta("Error en datos o base de datos."); 
+		}
+	}
+
+	private int obtenerOCrearEditorial(Connection con, String nombreEditorial) throws SQLException 
+	{
+		int id = -1;
+		String sqlBuscar = "SELECT idEditorial FROM editoriales WHERE nombreEditorial = ?";
+		try (PreparedStatement pstBuscar = con.prepareStatement(sqlBuscar)) 
+		{
+			pstBuscar.setString(1, nombreEditorial);
+			try (ResultSet rs = pstBuscar.executeQuery()) {
+				if (rs.next()) {
+					id = rs.getInt("idEditorial");
+				}
+			}
+		}
+
+		// Si tras buscar la editorial no existe (-1), se añade automáticamente a la BD
+		if (id == -1) 
+		{
+			String sqlInsertar = "INSERT INTO editoriales (nombreEditorial, correoEditorial, telefonoEditorial) VALUES (?, 'sin_correo@email.com', '000000000')";
+			try (PreparedStatement pstInsertar = con.prepareStatement(sqlInsertar, Statement.RETURN_GENERATED_KEYS)) 
+			{
+				pstInsertar.setString(1, nombreEditorial);
+				pstInsertar.executeUpdate();
+				try (ResultSet generatedKeys = pstInsertar.getGeneratedKeys()) {
+					if (generatedKeys.next()) {
+						id = generatedKeys.getInt(1);
+					}
+				}
+			}
+		}
+		return id;
+	}
+
+	private void mostrarAlerta(String msg) 
+	{
+		lblMensajeDlg.setText(msg);
+		dlgMensaje.setLocationRelativeTo(this); // Volver a centrar por si se mueve el Frame principal
+		dlgMensaje.setVisible(true);
+	}
+
+	public void windowClosing(WindowEvent e) { this.dispose(); }
+	public void windowActivated(WindowEvent e) {}
+	public void windowClosed(WindowEvent e) {}
+	public void windowDeactivated(WindowEvent e) {}
+	public void windowDeiconified(WindowEvent e) {}
+	public void windowIconified(WindowEvent e) {}
+	public void windowOpened(WindowEvent e) {}
+}
